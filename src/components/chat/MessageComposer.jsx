@@ -16,17 +16,26 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
   const [showAttachment, setShowAttachment] = useState(false)
   const [mentionQuery, setMentionQuery] = useState(null)
   const [mentionResults, setMentionResults] = useState([])
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
   const inputRef = useRef(null)
+  const recordingInterval = useRef(null)
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [conversationId])
 
+  // Cleanup recording interval on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingInterval.current) clearInterval(recordingInterval.current)
+    }
+  }, [])
+
   function handleSend() {
     const trimmed = text.trim()
     if (!trimmed) return
 
-    // Detect mentions
     const mentionRegex = /@(\w+)/g
     const mentions = []
     let match
@@ -61,7 +70,6 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
     const val = e.target.value
     setText(val)
 
-    // Check for mention trigger
     const cursorPos = e.target.selectionStart
     const textBeforeCursor = val.slice(0, cursorPos)
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
@@ -116,6 +124,98 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
     inputRef.current.focus()
   }
 
+  function startRecording() {
+    setIsRecording(true)
+    setRecordingTime(0)
+    recordingInterval.current = setInterval(() => {
+      setRecordingTime((t) => t + 1)
+    }, 1000)
+  }
+
+  function cancelRecording() {
+    setIsRecording(false)
+    setRecordingTime(0)
+    if (recordingInterval.current) clearInterval(recordingInterval.current)
+  }
+
+  function sendRecording() {
+    if (recordingInterval.current) clearInterval(recordingInterval.current)
+    const duration = recordingTime
+    setIsRecording(false)
+    setRecordingTime(0)
+
+    const msg = {
+      sender: currentUser.uid,
+      type: 'audio',
+      text: '',
+      url: '#',
+      fileName: `voice_note_${Date.now()}.mp3`,
+      duration,
+    }
+    const sent = sendMessage(conversationId, msg)
+    updateLastMessage(conversationId, { ...sent, sentAt: new Date(sent.sentAt) })
+  }
+
+  function formatRecordingTime(seconds) {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+
+  const hasText = text.trim().length > 0
+
+  // Recording UI
+  if (isRecording) {
+    return (
+      <div className="border-t border-gray-200 bg-white shrink-0">
+        <div className="px-4 py-3 flex items-center gap-3">
+          {/* Cancel */}
+          <button
+            onClick={cancelRecording}
+            className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors shrink-0"
+            title="Cancel recording"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Recording indicator */}
+          <div className="flex-1 flex items-center gap-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl">
+            <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+            <span className="text-sm font-medium text-red-600">Recording</span>
+            <div className="flex-1 flex items-center gap-1">
+              {[...Array(20)].map((_, i) => (
+                <span
+                  key={i}
+                  className="w-0.5 bg-red-400 rounded-full"
+                  style={{
+                    height: `${8 + Math.sin((recordingTime * 3 + i) * 0.8) * 8 + Math.random() * 6}px`,
+                    opacity: 0.5 + Math.random() * 0.5,
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-mono text-red-600 tabular-nums shrink-0">
+              {formatRecordingTime(recordingTime)}
+            </span>
+          </div>
+
+          {/* Send recording */}
+          <button
+            onClick={sendRecording}
+            className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors shrink-0"
+            title="Send voice note"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="border-t border-gray-200 bg-white shrink-0">
       {/* Reply preview */}
@@ -124,7 +224,7 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
           <div className="flex-1 px-3 py-1.5 bg-gray-100 rounded-lg border-l-2 border-primary-500 text-xs text-gray-600 truncate">
             Replying to: {replyTo.text || 'Media message'}
           </div>
-          <button onClick={onClearReply} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClearReply} className="text-gray-400 hover:text-gray-600 shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -132,10 +232,10 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
         </div>
       )}
 
-      <div className="px-4 py-3 flex items-end gap-2 relative">
+      <div className="px-3 py-2.5 flex items-end gap-1.5 relative">
         {/* Mention autocomplete */}
         {mentionQuery !== null && mentionResults.length > 0 && (
-          <div className="absolute bottom-full left-4 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-56">
+          <div className="absolute bottom-full left-4 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-56 z-10">
             {mentionResults.map((user) => (
               <button
                 key={user.uid}
@@ -150,7 +250,7 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
         )}
 
         {/* Attachment */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             onClick={() => { setShowAttachment(!showAttachment); setShowEmoji(false) }}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
@@ -163,7 +263,7 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
         </div>
 
         {/* Text input */}
-        <div className="flex-1 relative">
+        <div className="flex-1 min-w-0">
           <textarea
             ref={inputRef}
             value={text}
@@ -177,7 +277,7 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
         </div>
 
         {/* Emoji */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             onClick={() => { setShowEmoji(!showEmoji); setShowAttachment(false) }}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
@@ -187,22 +287,33 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
             </svg>
           </button>
           {showEmoji && (
-            <div className="absolute bottom-full right-0 mb-2">
+            <div className="absolute bottom-full right-0 mb-2 z-10">
               <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmoji(false)} />
             </div>
           )}
         </div>
 
-        {/* Send */}
-        <button
-          onClick={handleSend}
-          disabled={!text.trim()}
-          className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </button>
+        {/* Send or Mic */}
+        {hasText ? (
+          <button
+            onClick={handleSend}
+            className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            onClick={startRecording}
+            className="p-2.5 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors shrink-0"
+            title="Record voice note"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   )
