@@ -232,7 +232,7 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
         </div>
       )}
 
-      <div className="px-3 py-2.5 flex items-end gap-1.5 relative">
+      <div className="px-3 py-2.5 flex items-center gap-1.5 relative">
         {/* Mention autocomplete */}
         {mentionQuery !== null && mentionResults.length > 0 && (
           <div className="absolute bottom-full left-4 mb-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 w-56 z-10">
@@ -271,8 +271,8 @@ export default function MessageComposer({ conversationId, replyTo, onClearReply 
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             rows={1}
-            className="w-full resize-none px-4 py-2.5 text-sm bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-400 max-h-32"
-            style={{ minHeight: '42px' }}
+            className="w-full resize-none px-4 py-2 text-sm leading-6 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-400 max-h-32"
+            style={{ height: '40px' }}
           />
         </div>
 
