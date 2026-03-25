@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
+import { HashRouter, Routes, Route, Navigate } from 'react-router'
 import { useAuthStore } from './store/authStore'
 import LoginPage from './routes/LoginPage'
 import ChatPage from './routes/ChatPage'
@@ -11,7 +11,7 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route
@@ -23,6 +23,6 @@ export default function App() {
           }
         />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
