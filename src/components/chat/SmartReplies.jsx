@@ -13,10 +13,10 @@ const SMART_REPLIES_MAP = {
 
 export default function SmartReplies({ conversationId }) {
   const currentUser = useAuthStore((s) => s.currentUser)
-  const getMessages = useMessageStore((s) => s.getMessages)
+  const rawMessages = useMessageStore((s) => s.messages[conversationId] || [])
   const sendMessage = useMessageStore((s) => s.sendMessage)
   const updateLastMessage = useConversationStore((s) => s.updateLastMessage)
-  const messages = getMessages(conversationId)
+  const messages = rawMessages
 
   const replies = useMemo(() => {
     const lastMsg = messages.filter((m) => !m.parentId && m.sender !== currentUser?.uid).pop()
@@ -28,7 +28,7 @@ export default function SmartReplies({ conversationId }) {
     if (text.includes('thank') || text.includes('appreciate')) return SMART_REPLIES_MAP.thanks
     if (text.includes('?')) return SMART_REPLIES_MAP.question
     return SMART_REPLIES_MAP.default
-  }, [messages, currentUser])
+  }, [rawMessages, currentUser])
 
   if (!replies) return null
 

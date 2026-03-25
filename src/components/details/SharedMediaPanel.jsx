@@ -2,12 +2,11 @@ import { useMemo } from 'react'
 import { useMessageStore } from '../../store/messageStore'
 
 export default function SharedMediaPanel({ conversationId }) {
-  const getMessages = useMessageStore((s) => s.getMessages)
-  const messages = getMessages(conversationId)
+  const rawMessages = useMessageStore((s) => s.messages[conversationId] || [])
 
   const media = useMemo(
-    () => messages.filter((m) => m.type === 'image' || m.type === 'video' || m.type === 'file'),
-    [messages]
+    () => rawMessages.filter((m) => m.type === 'image' || m.type === 'video' || m.type === 'file'),
+    [rawMessages]
   )
 
   if (media.length === 0) return null

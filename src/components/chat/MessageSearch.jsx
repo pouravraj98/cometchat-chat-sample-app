@@ -5,20 +5,19 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { formatTime } from '../../data/helpers'
 
 export default function MessageSearch({ conversationId, onClose }) {
-  const getMessages = useMessageStore((s) => s.getMessages)
+  const rawMessages = useMessageStore((s) => s.messages[conversationId] || [])
   const getUser = useUserStore((s) => s.getUser)
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebounce(query, 300)
 
   const results = useMemo(() => {
     if (!debouncedQuery) return []
-    const messages = getMessages(conversationId)
     const q = debouncedQuery.toLowerCase()
-    return messages
+    return rawMessages
       .filter((m) => m.type === 'text' && m.text.toLowerCase().includes(q))
       .reverse()
       .slice(0, 20)
-  }, [debouncedQuery, conversationId, getMessages])
+  }, [debouncedQuery, rawMessages])
 
   return (
     <div className="border-b border-gray-200 bg-white">

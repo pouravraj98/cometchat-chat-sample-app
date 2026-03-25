@@ -5,8 +5,15 @@ import { formatDate } from '../../data/helpers'
 import EmptyState from '../shared/EmptyState'
 
 export default function MessageList({ conversationId, onOpenThread, onOpenRightPanel, onReply }) {
-  const getMessages = useMessageStore((s) => s.getMessages)
-  const messages = getMessages(conversationId)
+  const rawMessages = useMessageStore((s) => s.messages[conversationId] || [])
+  const messages = rawMessages.map((m) => ({
+    ...m,
+    sentAt: new Date(m.sentAt),
+    editedAt: m.editedAt ? new Date(m.editedAt) : null,
+    deletedAt: m.deletedAt ? new Date(m.deletedAt) : null,
+    readAt: m.readAt ? new Date(m.readAt) : null,
+    deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
+  }))
   const endRef = useRef(null)
 
   // Only top-level messages (no thread replies)
